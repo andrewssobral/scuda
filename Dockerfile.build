@@ -1,28 +1,43 @@
-ARG CUDA_VERSION=12.6.2
-ARG DISTRO_VERSION=24.04
+# docker build . -t andrewssobral/scuda-builder:12.4 -f Dockerfile.build
+
+ARG CUDA_VERSION=12.4.1
+ARG DISTRO_VERSION=22.04
 ARG OS_DISTRO=ubuntu
 ARG CUDNN_TAG=cudnn
 
+# Use a devel image as the base. This is important for compilation!
 FROM nvidia/cuda:${CUDA_VERSION}-${CUDNN_TAG}-devel-${OS_DISTRO}${DISTRO_VERSION}
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
+# Set environment variables that are useful inside the container.
+# This makes it clear which CUDA version we're using.
+ENV CUDA_VERSION=${CUDA_VERSION}
+ENV CUDNN_VERSION=${CUDNN_TAG}
+
+# Install necessary packages (including nvml-dev for NVML headers)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    libnvidia-ml-dev \
     python3 \
     python3-pip \
     python3-venv \
     ninja-build \
+    libnvidia-ml-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /home
+# Set working directory
+WORKDIR /home/scuda
 
+# Copy the entire project into the container
 COPY . .
 
+# Create a virtual environment and install requirements.  Crucially, do
+# *everything* in a single RUN instruction to ensure the environment is
+# active.
 RUN cd codegen && \
     python3 -m venv venv && \
-    venv/bin/pip install -r requirements.txt && \
-    venv/bin/python3 ./codegen.py
+    ./venv/bin/python3 -m pip install -r requirements.txt && \
+    ./venv/bin/python3 ./codegen.py
 
-RUN cmake .
+# Build the project using CMake
+RUN cmake . -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
 RUN cmake --build .

@@ -1,0 +1,17 @@
+# docker build . -t andrewssobral/scuda-server:12.4 -f Dockerfile.server
+# docker run -d --name scuda-server  --gpus all -p 14833:14833 andrewssobral/scuda-server:12.4
+# docker logs -f scuda-server
+
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
+WORKDIR /app
+
+# Copy ONLY the compiled server binary.  Adjust the version as needed.
+COPY --from=andrewssobral/scuda-builder:12.4 /home/scuda/server_12.4.so /app/server
+
+# Set the port (optional, as it can be overridden at runtime)
+EXPOSE 14833
+
+# Set the entrypoint to run the server
+ENTRYPOINT ["/app/server"]
+

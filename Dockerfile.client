@@ -1,0 +1,31 @@
+# docker build . -t andrewssobral/scuda-client:latest -f Dockerfile.client
+# docker run -it --rm andrewssobral/scuda-client:latest
+# docker run -it --rm -e SCUDA_SERVER=192.168.2.183 andrewssobral/scuda-client:latest
+
+FROM ubuntu:22.04
+
+# Install python3 if needed by your client application
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install torch numpy
+
+WORKDIR /app
+
+# Copy the compiled client library
+COPY --from=andrewssobral/scuda-builder:12.4 /home/scuda/libscuda_12.4.so /usr/local/lib/libscuda.so
+
+# Set the environment variable for the server
+ENV SCUDA_SERVER=127.0.0.1
+ENV LD_PRELOAD=/usr/local/lib/libscuda.so
+ENV libscuda_path=/usr/local/lib/libscuda.so
+
+# Copy additional files if needed
+COPY deploy/start.sh /start.sh
+RUN chmod +x /start.sh
+
+COPY ./test /app/test
+
+CMD ["/bin/bash", "/start.sh", "torch"]

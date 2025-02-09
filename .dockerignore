@@ -1,0 +1,9 @@
+.git
+.github
+build/
+*.o
+*.so
+__pycache__
+venv/
+*.swp
+*.DS_Store
